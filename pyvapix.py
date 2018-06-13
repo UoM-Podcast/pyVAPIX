@@ -1,16 +1,18 @@
 import requests
+from requests.auth import HTTPDigestAuth
 import io
 from PIL import Image
 
 
 class Vapix(object):
 
-    def __init__(self, ip='192.168.0.90', username='root', password='axis', debug=None):
+    def __init__(self, ip='192.168.0.90', username='root', password='pass', debug=None):
         self.ip = ip
         self.username = username
         self.password = password
         self.base_url = 'http://{}:{}@{}/axis-cgi/'.format(username, password, ip)
         self.debug_mode = debug
+        self.headers = {'X-Requested-Auth': 'Digest'}
 
     def user_or_password_error(self):
         # FIXME raise an exception
@@ -81,7 +83,7 @@ class Vapix(object):
 
         if request_type == 'POST':
             try:
-                r = requests.post(self.base_url + request_data)
+                r = requests.post(self.base_url + request_data, headers=self.headers, auth=HTTPDigestAuth(self.username, self.password))
             except Exception as e:
                 #FIXME this should be a specific exception
                 print('[-] Error: ' + str(e))
@@ -89,7 +91,7 @@ class Vapix(object):
 
         if request_type == 'GET':
             try:
-                r = requests.get(self.base_url + request_data)
+                r = requests.get(self.base_url + request_data, headers=self.headers, auth=HTTPDigestAuth(self.username, self.password))
             except Exception as e:
                 #FIXME this should be a specific exception
                 print('[-] Error: ' + str(e))
@@ -101,6 +103,9 @@ class Vapix(object):
 
     def _handle_status(self, request):
         if request.status_code == 200:
+            return True
+
+        if request.status_code == 204:
             return True
 
         elif request.status_code == 401:
@@ -122,7 +127,7 @@ class Vapix(object):
         """
         # FIXME figure out how to print out if movement request is left, right, up or down is happening from the number
         print('[*] moving camera: ' + pan_dir_speed, tilt_dir_speed)
-        self._handle_request('POST', 'com/ptz.cgi?continuouspantiltmove={},{}'.format(pan_dir_speed, tilt_dir_speed))
+        self._handle_request('GET', 'com/ptz.cgi?continuouspantiltmove={},{}'.format(pan_dir_speed, tilt_dir_speed))
 
     def continuouszoommove(self, zoom_type_speed):
         """
@@ -132,7 +137,7 @@ class Vapix(object):
         """
         # FIXME figure out how to print out if zoom in or zoom out request is happening from the number
         print('[*] zooming camera: ' + zoom_type_speed)
-        self._handle_request('POST', 'com/ptz.cgi?continuouszoommove={}'.format(zoom_type_speed))
+        self._handle_request('GET', 'com/ptz.cgi?continuouszoommove={}'.format(zoom_type_speed))
 
     def move(self, move_cmd):
         """
@@ -152,4 +157,4 @@ class Vapix(object):
         :return:
         """
         print('[*] moving camera: ' + move_cmd)
-        self._handle_request('POST', 'com/ptz.cgi?move={}'.format(move_cmd))
+        self._handle_request('GET', 'com/ptz.cgi?move={}'.format(move_cmd))
